@@ -12,6 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 
 LANG = "en"
 
@@ -20,8 +21,44 @@ def _t(es, en):
     return es if LANG == "es" else en
 
 
+MAX_CAPTURE_BYTES = 256 * 1024  # per stream; QML only shows short messages
+
+
+def _drain(stream, limit):
+    """Read up to `limit` bytes from a pipe, then keep draining to /dev/null
+    so the child never blocks on a full pipe. Returns decoded text."""
+    chunks = []
+    total = 0
+    while True:
+        chunk = stream.read(65536)
+        if not chunk:
+            break
+        if total < limit:
+            chunks.append(chunk[:limit - total])
+        total += len(chunk)
+    return b"".join(chunks).decode(errors="replace")
+
+
 def run(cmd, timeout=30):
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+    """subprocess.run(capture_output=True) with a hard byte cap, a real
+    timeout and guaranteed process cleanup: an unbounded privileged tool
+    output could exhaust memory before reaching QML."""
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
+    )
+    timer = threading.Timer(timeout, proc.kill)
+    timer.daemon = True
+    timer.start()
+    try:
+        out_text = _drain(proc.stdout, MAX_CAPTURE_BYTES)
+        err_text = _drain(proc.stderr, MAX_CAPTURE_BYTES)
+        proc.wait()
+    finally:
+        timer.cancel()
+        for stream in (proc.stdout, proc.stderr):
+            if stream:
+                stream.close()
+    return subprocess.CompletedProcess(cmd, proc.returncode, out_text, err_text)
 
 
 def ok(message="", **extra):

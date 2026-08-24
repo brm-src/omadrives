@@ -12,6 +12,19 @@ class OmaDrivesHelperTests(unittest.TestCase):
         self.assertEqual(omadrives.human_size(1024), "1K")
         self.assertEqual(omadrives.human_size(1024**2), "1M")
 
+    def test_run_caps_output_bytes(self):
+        result = omadrives.run([sys.executable, "-c", "print('x' * 1_000_000)"])
+        self.assertLessEqual(len(result.stdout.encode()), omadrives.MAX_CAPTURE_BYTES)
+
+    def test_run_kills_on_timeout(self):
+        result = omadrives.run(["sleep", "5"], timeout=1)
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_run_captures_stderr_and_returncode(self):
+        result = omadrives.run(["ls", "/definitely/not/here"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(result.stderr.strip())
+
     def test_partition_walk_skips_swap_and_keeps_mounted_unknown_fs(self):
         node = {
             "name": "disk",
