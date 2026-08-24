@@ -1,6 +1,6 @@
 # OmaDrives
 
-A focused Omarchy bar widget for managing removable and internal storage without opening a terminal.
+OmaDrives puts your drives in the Omarchy bar. Click a drive to mount it, open it, repair supported filesystem errors, or eject it safely — without opening a terminal.
 
 ![OmaDrives in Omarchy](screenshots/omadrives-live.png)
 
@@ -41,6 +41,17 @@ omarchy-shell shell rescanPlugins
 
 Add `io.github.brm-src.omadrives` to a bar section through Omarchy's plugin configuration. Restart the shell if an already-running bar does not pick up the new entry point.
 
+## Remove
+
+Remove the plugin directory and remove its ID from your bar layout:
+
+```bash
+rm -rf ~/.config/omarchy/plugins/io.github.brm-src.omadrives
+omarchy-shell shell rescanPlugins
+```
+
+Removing the plugin does not delete files from any drive.
+
 ## Controls
 
 - Left click: open or close the drive panel.
@@ -56,6 +67,8 @@ Add `io.github.brm-src.omadrives` to a bar section through Omarchy's plugin conf
 - `findmnt` and `lsblk`.
 - Optional filesystem repair tools for the Repair action.
 - `polkit`/`pkexec` for privileged repair and hardware rescan operations.
+
+The widget asks for authorization only when an operation genuinely needs it. It does not store the password.
 
 ## Development checks
 

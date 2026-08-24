@@ -15,7 +15,7 @@
   "barWidget": {
     "displayName": "OmaDrives",
     "description": "Mount, unmount, repair, and safely eject drives from the Omarchy bar.",
-    "category": "System",
+    "category": "Hardware",
     "allowMultiple": false
   }
 }
