@@ -86,9 +86,11 @@ Panel {
   function applyList(raw) {
     root.scanning = false
     try {
-      var payload = JSON.parse(String(raw || "{}"))
-      drives = payload.drives || []
-      if (payload.ok === false) statusMessage = payload.error || ""
+      var payload = JSON.parse(String(raw || "{}").slice(0, 256 * 1024))
+      var list = Array.isArray(payload.drives) ? payload.drives.slice(0, 64) : []
+      // helper already truncates, but guard QML side too
+      drives = list
+      if (payload.ok === false) statusMessage = String(payload.error || "").slice(0, 512)
     } catch (error) {
       drives = []
       statusMessage = root.words("No se pudo leer el estado de las unidades.", "Could not read drive state.")
@@ -97,8 +99,8 @@ Panel {
 
   function applyAction(raw) {
     try {
-      var payload = JSON.parse(String(raw || "{}"))
-      statusMessage = payload.message || payload.error || root.words("Listo.", "Done.")
+      var payload = JSON.parse(String(raw || "{}").slice(0, 32 * 1024))
+      statusMessage = String(payload.message || payload.error || root.words("Listo.", "Done.")).slice(0, 512)
     } catch (error) {
       statusMessage = root.words("Respuesta ilegible del sistema.", "Unreadable system response.")
     }

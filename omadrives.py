@@ -21,6 +21,11 @@ def _t(es, en):
     return es if LANG == "es" else en
 
 
+def _trunc(s, n):
+    t = str(s or "")
+    return t[:n] if len(t) > n else t
+
+
 MAX_CAPTURE_BYTES = 256 * 1024  # per stream; QML only shows short messages
 
 
@@ -88,18 +93,22 @@ def load_lsblk():
     result = run(["lsblk", "-J", "-b", "-o",
                   "NAME,PATH,SIZE,FSTYPE,LABEL,MOUNTPOINTS,MOUNTPOINT,RM,RO,TYPE,MODEL,VENDOR"])
     if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "lsblk failed")
-    return json.loads(result.stdout or "{}")
+        raise RuntimeError(_trunc(result.stderr.strip() or "lsblk failed", 512))
+    # run() already caps to 256 KiB per stream, but guard JSON size anyway
+    text = result.stdout or "{}"
+    if len(text) > 256 * 1024:
+        text = text[:256 * 1024]
+    return json.loads(text)
 
 
 def load_mount_fstypes():
     result = run(["findmnt", "-rn", "-o", "SOURCE,FSTYPE,TARGET"], timeout=10)
     mounts = {}
-    for line in result.stdout.splitlines():
+    for line in result.stdout.splitlines()[:256]:
         fields = line.split(None, 2)
         if len(fields) == 3:
             source, fstype, target = fields
-            mounts[target] = (source.split("[", 1)[0], fstype.lower())
+            mounts[_trunc(target, 256)] = (_trunc(source.split("[", 1)[0], 128), _trunc(fstype.lower(), 32))
     return mounts
 
 
@@ -129,30 +138,33 @@ def collect_drives():
     data = load_lsblk()
     mount_fstypes = load_mount_fstypes()
     drives = []
-    for device in data.get("blockdevices", []):
+    for device in (data.get("blockdevices", []) or [])[:64]:
         # Skip virtual block devices: zram, loops, md raids.
         name = device.get("name") or ""
         if name.startswith(("zram", "loop", "md", "ram")):
             continue
-        parent_model = device.get("model") or ""
-        parent_vendor = device.get("vendor") or ""
+        parent_model = _trunc(device.get("model") or "", 64)
+        parent_vendor = _trunc(device.get("vendor") or "", 64)
         parent_rm = bool(device.get("rm"))
-        parent_path = device.get("path") or ""
+        parent_path = _trunc(device.get("path") or "", 128)
         for part in iter_partitions(device):
+            if len(drives) >= 64:
+                break
             mounts = part.get("mountpoints") or []
             mountpoint = next((m for m in mounts if m), part.get("mountpoint")) or ""
-            fstype = (part.get("fstype") or "").lower()
+            mountpoint = _trunc(mountpoint, 256)
+            fstype = _trunc((part.get("fstype") or "").lower(), 32)
             if not fstype:
                 source_fs = mount_fstypes.get(mountpoint)
                 if source_fs and source_fs[0] == part.get("path"):
-                    fstype = source_fs[1]
+                    fstype = _trunc(source_fs[1], 32)
             drives.append({
-                "name": os.path.basename(part.get("path") or ""),
-                "dev": part.get("path") or "",
+                "name": _trunc(os.path.basename(part.get("path") or ""), 64),
+                "dev": _trunc(part.get("path") or "", 128),
                 "parent": parent_path,
                 "size": human_size(part.get("size") or 0),
-                "label": part.get("label") or "",
-                "partLabel": part.get("partlabel") or "",
+                "label": _trunc(part.get("label") or "", 64),
+                "partLabel": _trunc(part.get("partlabel") or "", 64),
                 "fstype": fstype or "unknown",
                 "mountpoint": mountpoint,
                 "mounted": bool(mountpoint),
@@ -161,8 +173,10 @@ def collect_drives():
                 "mountable": bool(fstype) and not mountpoint,
                 "repairable": fstype in {"ntfs", "vfat", "fat32", "exfat", "ext2", "ext3", "ext4"},
                 "kind": drive_kind({"rm": parent_rm}),
-                "model": (parent_model or parent_vendor).strip(),
+                "model": (parent_model or parent_vendor).strip()[:64],
             })
+            if len(drives) >= 64:
+                break
     drives.sort(key=lambda d: (not d["removable"], d["name"]))
     return drives
 
