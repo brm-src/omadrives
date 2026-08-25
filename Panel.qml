@@ -229,6 +229,7 @@ Panel {
           visible: root.statusMessage !== ""
           width: parent.width
           text: root.statusMessage
+          textFormat: Text.PlainText
           color: Color.accent
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.bodySmall
@@ -287,6 +288,7 @@ Panel {
                     spacing: Style.space(6)
                     Text {
                       text: card.modelData.label || card.modelData.name
+                      textFormat: Text.PlainText
                       color: Color.menu.text
                       font.family: Style.font.menuFamily
                       font.pixelSize: Style.font.body
@@ -297,6 +299,7 @@ Panel {
                     Text {
                       text: card.modelData.name + " · " + String(card.modelData.fstype).toUpperCase() + " · " + card.modelData.size +
                         (card.modelData.readonly ? " · " + root.words("solo lectura", "read-only") : "")
+                      textFormat: Text.PlainText
                       color: Util.alpha(Color.menu.text, 0.45)
                       font.family: Style.font.menuFamily
                       font.pixelSize: Style.font.caption
@@ -308,6 +311,7 @@ Panel {
                     width: parent.width
                     text: (card.modelData.model ? card.modelData.model + " · " : "") + root.kindLabel(card.modelData) +
                       (card.modelData.mounted && card.modelData.mountpoint ? "  ·  " + card.modelData.mountpoint : "")
+                    textFormat: Text.PlainText
                     color: Util.alpha(Color.menu.text, 0.55)
                     font.family: Style.font.menuFamily
                     font.pixelSize: Style.font.caption

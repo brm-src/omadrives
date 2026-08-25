@@ -2,7 +2,7 @@
     "schemaVersion": 1,
     "id": "io.github.brm-src.omadrives",
     "name": "OmaDrives",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "author": "brm-src",
     "license": "MIT",
     "description": "Manage drives from the bar: mount, browse, repair dirty NTFS/FAT volumes, and safely eject without a terminal.",
