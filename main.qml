@@ -39,6 +39,11 @@ BarWidget {
     return false
   }
 
+  readonly property bool hasRemovableStorage: {
+    var panel = panelLoader.item
+    return panel ? panel.removableAvailable === true : false
+  }
+
   readonly property string panelTooltip: {
     var panel = panelLoader.item
     if (!panel || !panel.drives || panel.drives.length === 0)
@@ -65,7 +70,7 @@ BarWidget {
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
-  visible: true
+  visible: root.hasRemovableStorage || root.opened
 
   onBarChanged: injectPanel()
   onSettingsChanged: injectPanel()
@@ -87,7 +92,6 @@ BarWidget {
     bar: root.bar
     text: "󰋊"
     slotSize: Style.bar.statusSlot
-    opticalSize: 17
     tooltipText: root.panelTooltip
     active: root.opened || root.hasMountedRemovable
     useActiveColor: true

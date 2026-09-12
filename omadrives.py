@@ -128,20 +128,31 @@ def iter_partitions(node):
         yield from iter_partitions(child)
 
 
+def is_virtual_device(node):
+    name = node.get("name") or ""
+    return name.startswith(("zram", "loop", "md", "ram"))
+
+
+def has_removable_devices(data):
+    for device in (data.get("blockdevices", []) or [])[:64]:
+        if not is_virtual_device(device) and bool(device.get("rm")):
+            return True
+    return False
+
+
 def drive_kind(node):
     if node.get("rm"):
         return "usb"
     return "internal"
 
 
-def collect_drives():
-    data = load_lsblk()
+def collect_drives(data=None):
+    data = data if data is not None else load_lsblk()
     mount_fstypes = load_mount_fstypes()
     drives = []
     for device in (data.get("blockdevices", []) or [])[:64]:
         # Skip virtual block devices: zram, loops, md raids.
-        name = device.get("name") or ""
-        if name.startswith(("zram", "loop", "md", "ram")):
+        if is_virtual_device(device):
             continue
         parent_model = _trunc(device.get("model") or "", 64)
         parent_vendor = _trunc(device.get("vendor") or "", 64)
@@ -190,10 +201,11 @@ def find_drive(dev):
 
 def cmd_list(_args):
     try:
-        drives = collect_drives()
+        data = load_lsblk()
+        drives = collect_drives(data)
     except Exception as error:  # noqa: BLE001 - surfaced to the UI
         fail(str(error))
-    ok("", drives=drives)
+    ok("", drives=drives, removableAvailable=has_removable_devices(data))
 
 
 def cmd_mount(args):

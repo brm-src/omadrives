@@ -36,6 +36,14 @@ class OmaDrivesHelperTests(unittest.TestCase):
         found = list(omadrives.iter_partitions(node))
         self.assertEqual([item["name"] for item in found], ["mounted"])
 
+    def test_removable_detection_includes_unformatted_media(self):
+        self.assertTrue(omadrives.has_removable_devices({
+            "blockdevices": [{"name": "sdb", "rm": True, "type": "disk"}],
+        }))
+        self.assertFalse(omadrives.has_removable_devices({
+            "blockdevices": [{"name": "zram0", "rm": True, "type": "disk"}],
+        }))
+
 
 if __name__ == "__main__":
     unittest.main()

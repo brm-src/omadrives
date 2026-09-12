@@ -20,6 +20,7 @@ Panel {
   readonly property string helperPath: Qt.resolvedUrl("omadrives.py").toString().replace("file://", "")
 
   property var drives: []
+  property bool removableAvailable: false
   property string statusMessage: ""
   property string busyDev: ""
   property bool scanning: false
@@ -31,6 +32,10 @@ Panel {
     root.scanning = true
     listProc.command = ["python3", root.helperPath, "--lang", root.uiLanguage, "list"]
     listProc.running = true
+  }
+
+  function scheduleRefresh() {
+    monitorRefresh.restart()
   }
 
   function rescan() {
@@ -90,9 +95,11 @@ Panel {
       var list = Array.isArray(payload.drives) ? payload.drives.slice(0, 64) : []
       // helper already truncates, but guard QML side too
       drives = list
+      removableAvailable = payload.removableAvailable === true
       if (payload.ok === false) statusMessage = String(payload.error || "").slice(0, 512)
     } catch (error) {
       drives = []
+      removableAvailable = false
       statusMessage = root.words("No se pudo leer el estado de las unidades.", "Could not read drive state.")
     }
   }
@@ -124,6 +131,28 @@ Panel {
     running: root.opened
     triggeredOnStart: false
     onTriggered: root.refresh()
+  }
+
+  Timer {
+    id: monitorRefresh
+    interval: 450
+    onTriggered: root.refresh()
+  }
+
+  Timer {
+    id: monitorRestart
+    interval: 1000
+    onTriggered: udisksMonitor.running = true
+  }
+
+  Process {
+    id: udisksMonitor
+    command: ["udisksctl", "monitor"]
+    running: true
+    stdout: SplitParser {
+      onRead: function(line) { root.scheduleRefresh() }
+    }
+    onExited: monitorRestart.restart()
   }
 
   Process {
