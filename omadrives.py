@@ -17,6 +17,8 @@ import threading
 LANG = "en"
 
 
+SYSTEM_MOUNTS = {"/", "/boot", "/efi", "/boot/efi", "/home", "/usr", "/var"}
+
 def _t(es, en):
     return es if LANG == "es" else en
 
@@ -161,8 +163,9 @@ def collect_drives(data=None):
         for part in iter_partitions(device):
             if len(drives) >= 64:
                 break
-            mounts = part.get("mountpoints") or []
-            mountpoint = next((m for m in mounts if m), part.get("mountpoint")) or ""
+            mounts = [m for m in (part.get("mountpoints") or []) if m] or [part.get("mountpoint") or ""]
+            # btrfs subvolumes list several mountpoints; the shortest one ("/") names the volume.
+            mountpoint = min(mounts, key=len)
             mountpoint = _trunc(mountpoint, 256)
             fstype = _trunc((part.get("fstype") or "").lower(), 32)
             if not fstype:
@@ -179,6 +182,7 @@ def collect_drives(data=None):
                 "fstype": fstype or "unknown",
                 "mountpoint": mountpoint,
                 "mounted": bool(mountpoint),
+                "system": any(m in SYSTEM_MOUNTS for m in mounts),
                 "removable": parent_rm,
                 "readonly": bool(part.get("ro")),
                 "mountable": bool(fstype) and not mountpoint,
@@ -231,6 +235,8 @@ def cmd_mount(args):
 
 
 def cmd_unmount(args):
+    if (find_drive(args.dev) or {}).get("system"):
+        fail(_t("Es una partición del sistema; no se desmonta desde aquí.", "This is a system partition; it is not unmounted from here."))
     result = run(["udisksctl", "unmount", "-b", args.dev])
     if result.returncode != 0:
         fail(result.stderr.strip() or _t("No se pudo desmontar.", "Could not unmount."))

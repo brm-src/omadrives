@@ -116,7 +116,7 @@ Panel {
   }
 
   function kindIcon(drive) {
-    return drive.removable ? "󰌟" : "󰋋"
+    return drive.removable ? "󱊞" : "󰋊"
   }
 
   function kindLabel(drive) {
@@ -326,7 +326,7 @@ Panel {
                       width: Math.min(implicitWidth + 2, parent.width / 2)
                     }
                     Text {
-                      text: card.modelData.name + " · " + String(card.modelData.fstype).toUpperCase() + " · " + card.modelData.size +
+                      text: (card.modelData.label ? card.modelData.name + " · " : "") + String(card.modelData.fstype).toUpperCase() + " · " + card.modelData.size +
                         (card.modelData.readonly ? " · " + root.words("solo lectura", "read-only") : "")
                       textFormat: Text.PlainText
                       color: Util.alpha(Color.menu.text, 0.45)
@@ -380,7 +380,7 @@ Panel {
                   onClicked: root.openDrive(card.modelData.mountpoint)
                 }
                 DriveButton {
-                  visible: card.modelData.mounted
+                  visible: card.modelData.mounted && !card.modelData.system
                   text: root.words("Desmontar", "Unmount")
                   bordered: true
                   enabled: !card.busy
@@ -396,7 +396,7 @@ Panel {
                   onClicked: root.requestAction(card.modelData.dev, "poweroff")
                 }
                 DriveButton {
-                  visible: card.modelData.repairable
+                  visible: card.modelData.repairable && !card.modelData.mounted
                   text: root.words("Reparar", "Repair")
                   bordered: true
                   enabled: !card.busy

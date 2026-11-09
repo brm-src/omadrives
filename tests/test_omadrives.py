@@ -45,5 +45,17 @@ class OmaDrivesHelperTests(unittest.TestCase):
         }))
 
 
+    def test_btrfs_root_reports_slash_and_is_system(self):
+        data = {"blockdevices": [{
+            "name": "nvme0n1", "path": "/dev/nvme0n1", "type": "disk",
+            "children": [{
+                "name": "root", "path": "/dev/mapper/root", "type": "crypt", "fstype": "btrfs",
+                "mountpoints": ["/var/cache/pacman/pkg", "/home", "/"],
+            }],
+        }]}
+        drive = omadrives.collect_drives(data)[0]
+        self.assertEqual(drive["mountpoint"], "/")
+        self.assertTrue(drive["system"])
+
 if __name__ == "__main__":
     unittest.main()
